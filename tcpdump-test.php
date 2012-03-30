@@ -20,7 +20,7 @@ try {
     $tcpdump->init(array('-s' => 0, '-A' => null));
     // Set tcpdump options
     $tcpdump->setInterface('eth0')
-            ->setOutputFile('/tmp/192.168.0.3.pcap')
+            ->setOutputFile('/tmp/192.168.0.2.pcap')
             ->setFileSize('100')
             ->setExprFilter($pcap_filter);
 
