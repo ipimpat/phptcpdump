@@ -73,8 +73,8 @@ class tcpdump {
      * Initialize class
      * 
      * Optionaly pass a array of tcpdump options
-     * Values is not validate or escaped, so don't use for direct user input
-     * w/o escape values first
+     * Values is not validate , so don't use for direct user input
+     * w/o validating values first
      * 
      * @param array $init_options
      * @throws InvalidArgumentException 

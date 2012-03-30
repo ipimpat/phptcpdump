@@ -6,9 +6,9 @@ $expr = new pcapFilterExpression();
 $tcpdump = new tcpdump();
 
 try {
-    // initialize expression generator
+    // Initialize expression generator
     $expr->init();
-    // compile expression
+    // Compile expression
     $pcap_filter = $expr->begin()
             ->host('192.168.0.2')
             ->concate()
@@ -16,7 +16,7 @@ try {
             ->end()
             ->getPcapFilterExpressionString();
 
-    // Init tcpdump
+    // Initialize tcpdump
     $tcpdump->init(array('-s' => 0, '-A' => null));
     // Set tcpdump options
     $tcpdump->setInterface('eth0')
