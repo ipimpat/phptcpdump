@@ -24,7 +24,7 @@ class pcapFilterExpression {
      * @var array 
      */
     private $expression_stack = array();
-
+   
     /**
      * Init
      * initialize the class 
@@ -39,17 +39,18 @@ class pcapFilterExpression {
      * 
      * @param string $ip
      * @param string $direction optional packet direction 'src' or 'dst' or emptry string
-     * @return \tcpdump
+     * @return \pcapFilterExpression
+     * @throws InvalidArgumentException 
      */
     public function host($ip, $direction = '') {
 
         // Validate packet direction
         if (!$this->isValidDirection($direction))
-            trigger_error(sprintf("expression error: invalid packet direct flow %s", $direction), E_USER_ERROR);
+            throw new InvalidArgumentException(sprintf("expression error: invalid packet direct flow %s, must be 'src', 'dst' or none (any)", $direction));
 
         // Validate ip
         if (!$this->isValidIP($ip))
-            trigger_error(sprintf("expression error: %s doesn't look like a valid ip", $ip), E_USER_ERROR);
+            throw new InvalidArgumentException(sprintf("expression error: %s is not a valid ip", $ip));
 
         // Parse primitive
         $this->expression .= trim(sprintf("%s host %s", $direction, $ip));
@@ -62,21 +63,22 @@ class pcapFilterExpression {
      * @param int $port
      * @param string $direction optional packet direction src, dst
      * @param string $direction optional protocol tcp or udp
-     * @return \tcpdump
+     * @return \pcapFilterExpression
+     * @throws InvalidArgumentException 
      */
     public function port($port, $direction = '', $protocol = '') {
 
         // Validate packet direction
         if (!$this->isValidDirection($direction))
-            trigger_error(sprintf("expression error: invalid packet direct flow %s", $direction), E_USER_ERROR);
+            throw new InvalidArgumentException(sprintf("expression error: invalid packet direct flow %s", $direction));
 
         // Validate protocol
         if (!$this->isValidProtocol($protocol))
-            trigger_error(sprintf("expression error: invalid protocol %s", $protocol), E_USER_ERROR);
+            throw new InvalidArgumentException(sprintf("expression error: invalid protocol %s", $protocol));
 
         // Validate port number
         if (!$this->isValidPortNumber($port))
-            trigger_error(sprintf("expression error: %s doesn't look like a valid port number", $port), E_USER_ERROR);
+            throw new InvalidArgumentException(sprintf("expression error: %s doesn't look like a valid port number", $port));
 
         // Type cast port to an integer
         $port = (int) $port;
@@ -93,21 +95,22 @@ class pcapFilterExpression {
      * @param iint $end_port
      * @param string $direction optional packet direction 'src', 'dst' or emptry string
      * @param string $direction optional protocol 'tcp' or 'udp' or emptry string
-     * @return \tcpdump
+     * @return \pcapFilterExpression
+     * @throws InvalidArgumentException 
      */
     public function port_range($start_port, $end_port, $direction = '', $protocol = '') {
 
         // Validate packet direction
         if (!$this->isValidDirection($direction))
-            trigger_error(sprintf("expression error: invalid packet direct flow %s", $direction), E_USER_ERROR);
+            throw new InvalidArgumentException(sprintf("expression error: invalid packet direct flow %s", $direction));
 
         // Validate protocol
         if (!$this->isValidProtocol($protocol))
-            trigger_error(sprintf("expression error: invalid protocol %s", $protocol), E_USER_ERROR);
+            throw new InvalidArgumentException(sprintf("expression error: invalid protocol %s", $protocol));
 
         // Validate port number
         if (!$this->isValidPortNumber($start_port) OR !$this->isValidPortNumber($end_port))
-            trigger_error(sprintf("expression error: %s-%s doesn't look like a valid port range", $start_port, $end_port), E_USER_ERROR);
+            throw new InvalidArgumentException(sprintf("expression error: %s-%s doesn't look like a valid port range", $start_port, $end_port));
 
         // Type cast ports
         $start_port = (int) $start_port;
@@ -121,7 +124,7 @@ class pcapFilterExpression {
     /**
      * Append a concatenation operator
      * 
-     * @return \tcpdump 
+     * @return \pcapFilterExpression 
      */
     public function concate() {
         $this->expression .= " and ";
@@ -131,7 +134,7 @@ class pcapFilterExpression {
     /**
      * Append a alternation operator
      * 
-     * @return \tcpdump 
+     * @return \pcapFilterExpression 
      */
     public function alternate() {
         $this->expression .= " or ";
@@ -141,7 +144,7 @@ class pcapFilterExpression {
     /**
      * Append a negation operator
      * 
-     * @return \tcpdump 
+     * @return \pcapFilterExpression 
      */
     public function negate() {
         $this->expression .= " not ";
@@ -159,34 +162,39 @@ class pcapFilterExpression {
      *  concate: (concate, and, &&)
      *  alternate: (alternate, or, ||)
      *  negate: (negate, not, !)
-     * @return \pcapFilterExpression 
+     * @return \pcapFilterExpression
+     * @throws UnexpectedValueException 
      */
     public function group($operator = NULL) {
-        // Enclose primitives in parenthesize
-        $this->expression = "(" . $this->expression . ")";
+        if (!empty($this->expression)) {
+            // Enclose primitives in parenthesize
+            $this->expression = "(" . $this->expression . ")";
 
-        switch ($operator) {
-            case "alternate":
-            case "or":
-            case "||":
-                $this->expression = ' or ' . $this->expression;
-                break;
-            case "negate":
-            case "not":
-            case "!":
-                $this->expression = ' not ' . $this->expression;
-                break;
-            case "concate":
-            case "and":
-            case "&&":
-                $this->expression = ' and ' . $this->expression;
-                break;
-            default :
-                break;
+            switch ($operator) {
+                case "alternate":
+                case "or":
+                case "||":
+                    $this->expression = ' or ' . $this->expression;
+                    break;
+                case "negate":
+                case "not":
+                case "!":
+                    $this->expression = ' not ' . $this->expression;
+                    break;
+                case "concate":
+                case "and":
+                case "&&":
+                    $this->expression = ' and ' . $this->expression;
+                    break;
+                default :
+                    break;
+            }
+
+            $this->end();
+            $this->begin();
+        } else {
+            throw new UnexpectedValueException('expression is empty');
         }
-
-        $this->end();
-        $this->begin();
         return $this;
     }
 
@@ -215,14 +223,15 @@ class pcapFilterExpression {
     /**
      * Add it to the expression stack
      * 
-     * @return \tcpdump 
+     * @return \pcapFilterExpression
+     * @throws UnexpectedValueException 
      */
     private function stack() {
         // add expr to stack
         if (!empty($this->expression))
             $this->expression_stack[] = $this->expression;
         else
-            trigger_error("Expression empty, not stacking", E_USER_WARNING);
+            throw new UnexpectedValueException("Expression empty, not stacking");
 
         return $this;
     }
@@ -236,7 +245,7 @@ class pcapFilterExpression {
     public function getPcapFilterExpressionString() {
         // implode expression stack
         $expr_str = "";
-        foreach($this->expression_stack as $expr){
+        foreach ($this->expression_stack as $expr) {
             // trim whitespaces
             $expr_str = trim($expr_str .= " " . trim($expr));
         }
